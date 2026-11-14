@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    //Crear la ventana (Resolución original 64x32, escala x10)
+    //4. Crear la ventana (Resolución original 64x32, escala x10)
     const int SCALE = 10;
     SDL_Window* window = SDL_CreateWindow(
         "CHIP-8 Emulador",
@@ -50,8 +50,25 @@ int main(int argc, char* argv[]) {
 
     std::cout << "¡Entorno gráfico inicializado correctamente!" << std::endl;
 
-    //Mantener la ventana abierta 3 segundos (3000 ms) para poder verla
-    SDL_Delay(3000);
+    //5. BUcle principal del emulador (Game Loop)
+    bool quit = false;
+    SDL_Event e;
+
+    while (!quit) {
+
+        //Procesar eventos de la ventana (escuchar si pulsas la 'X' para cerrar)
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            }
+        }
+
+        //Ejecutar un ciclo de la CPU
+        chip8.cycle();
+
+        //Pausa de 1ms para no saturar la CPU de tu ordenador
+        SDL_Delay(1);
+    }
 
     //Limpiar la memoria y cerrar limpiamente
     SDL_DestroyRenderer(renderer);
