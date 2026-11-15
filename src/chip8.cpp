@@ -1,6 +1,7 @@
 #include "chip8.hpp"
 #include <fstream>
 #include <iostream>
+#include <cstring>
 
 Chip8::Chip8() {
     //El Program Counter siempre empieza en 0x200 (512 en decimal)
@@ -87,7 +88,7 @@ void Chip8::cycle() {
             index = NNN;
             break;
 
-        case 0xD000:
+        case 0xD000:{
             //DXYN: Dibujar sprite en pantalla (XOR)
             uint8_t xPos = registers[X] % 64;
             uint8_t yPos = registers[Y] % 32;
@@ -99,8 +100,25 @@ void Chip8::cycle() {
 
                 //Iterar sobre los 8 bits (columnas) de la fila actual
                 for (unsigned int col = 0; col < 8; ++col) {
-                    uint8_t
+                    uint8_t spritePixel = spriteByte & (0x80u >> col);
+                    //Puntero al pixel exacto de la pantalla (1D array)
+                    uint32_t* screenPixel = &video[(yPos + row) * 64 + (xPos + col)];
+
+                    //Si el pixel del sprite esta encendido (1)
+                    if (spritePixel) {
+                        //Si el pixel de la pantalla ya estaba encendido, hay colision
+                        if (*screenPixel == 0xFFFFFFFF) {
+                            registers[0xF] = 1;
+                        }
+                        //Aplicar XOR para invertir el pixel
+                        *screenPixel ^= 0xFFFFFFFF;
+                    }
                 }
             }
+            break;
+        }
+        default:
+        //SI lee mos algo raro, lo ignoramos de momento
+        break;   
     }
 }

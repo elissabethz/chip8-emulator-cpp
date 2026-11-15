@@ -42,15 +42,9 @@ int main(int argc, char* argv[]) {
 
     //Crear el renderizador (el motor que dibuja en la ventana)
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-    //Pintar el fondo de negro puro (RGBA: 0, 0, 0, 255)
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderPresent(renderer);
-
     std::cout << "¡Entorno gráfico inicializado correctamente!" << std::endl;
 
-    //5. BUcle principal del emulador (Game Loop)
+    //5. Bucle principal del emulador (Game Loop)
     bool quit = false;
     SDL_Event e;
 
@@ -65,6 +59,29 @@ int main(int argc, char* argv[]) {
 
         //Ejecutar un ciclo de la CPU
         chip8.cycle();
+
+        // --- LOGICA DE DIBUJADO ---
+
+        //Limpiar la ventana de SDL en negro puro (Fondo)
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+
+        //Cambiar el color del pincel a blanco para los pixeles encendidos
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+        //Recorrer la pantalla del CHIP-8 (64 columnas x 32 filas) y dibujar rectangulos
+        for (int y = 0; y < 32; ++y) {
+            for (int x = 0; x < 64; ++x) {
+                //Si el pixel esta encendido en nuestra RAM, lo pintamos de blanco en SDL
+                if (chip8.video[y * 64 + x] != 0) {
+                    SDL_Rect rect = {x * SCALE, y * SCALE, SCALE, SCALE};
+                    SDL_RenderFillRect(renderer, &rect);
+                }
+            }
+        }
+
+        //Refrescar la ventana para mostrar los cambios
+        SDL_RenderPresent(renderer);
 
         //Pausa de 1ms para no saturar la CPU de tu ordenador
         SDL_Delay(1);
