@@ -3,91 +3,120 @@
 #include "chip8.hpp"
 
 int main(int argc, char* argv[]) {
-
-    //1. Comprobar que pasamos la ROM por argumento
     if (argc != 2) {
         std::cerr << "Uso: " << argv[0] << " <ruta_a_la_rom>" << std::endl;
         return -1;
     }
 
-    //2. Crear la maquina virtual
     Chip8 chip8;
-    if (!chip8.loadROM(argv[1])) {
-        //Si falla la carga, abortamos y salimos del main
-        return -1;
-    }
+    if (!chip8.loadROM(argv[1])) return -1;
 
-    //3. Inicializar el subsistema de video de SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "Error al inicializar SDL:" << SDL_GetError() << std::endl;
+        std::cerr << "Error al inicializar SDL: " << SDL_GetError() << std::endl;
         return -1;
     }
 
-    //4. Crear la ventana (Resolución original 64x32, escala x10)
     const int SCALE = 10;
     SDL_Window* window = SDL_CreateWindow(
-        "CHIP-8 Emulador",
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        64 * SCALE,
-        32 * SCALE,
-        SDL_WINDOW_SHOWN
+        "CHIP-8 Emulator",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        64 * SCALE, 32 * SCALE, SDL_WINDOW_SHOWN
     );
 
     if (!window) {
-        std::cerr << "Error al crear la ventana:" << SDL_GetError() << std::endl;
         SDL_Quit();
         return -1;
     }
 
-    //Crear el renderizador (el motor que dibuja en la ventana)
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    std::cout << "¡Entorno gráfico inicializado correctamente!" << std::endl;
-
-    //5. Bucle principal del emulador (Game Loop)
+    
     bool quit = false;
     SDL_Event e;
 
+    // --- RELOJ MEJORADO (Desvinculado del delay del OS) ---
+    uint32_t lastTimerTick = SDL_GetTicks();
+
     while (!quit) {
-
-        //Procesar eventos de la ventana (escuchar si pulsas la 'X' para cerrar)
         while (SDL_PollEvent(&e)) {
-            if (e.type == SDL_QUIT) {
-                quit = true;
+            if (e.type == SDL_QUIT) quit = true;
+            
+            if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_1: chip8.keypad[0x1] = 1; break;
+                    case SDLK_2: chip8.keypad[0x2] = 1; break;
+                    case SDLK_3: chip8.keypad[0x3] = 1; break;
+                    case SDLK_4: chip8.keypad[0xC] = 1; break;
+                    case SDLK_q: chip8.keypad[0x4] = 1; break;
+                    case SDLK_w: chip8.keypad[0x5] = 1; break;
+                    case SDLK_e: chip8.keypad[0x6] = 1; break;
+                    case SDLK_r: chip8.keypad[0xD] = 1; break;
+                    case SDLK_a: chip8.keypad[0x7] = 1; break;
+                    case SDLK_s: chip8.keypad[0x8] = 1; break;
+                    case SDLK_d: chip8.keypad[0x9] = 1; break;
+                    case SDLK_f: chip8.keypad[0xE] = 1; break;
+                    case SDLK_z: chip8.keypad[0xA] = 1; break;
+                    case SDLK_x: chip8.keypad[0x0] = 1; break;
+                    case SDLK_c: chip8.keypad[0xB] = 1; break;
+                    case SDLK_v: chip8.keypad[0xF] = 1; break;
+                }
             }
-        }
-
-        //Ejecutar un ciclo de la CPU
-        chip8.cycle();
-
-        // --- LOGICA DE DIBUJADO ---
-
-        //Limpiar la ventana de SDL en negro puro (Fondo)
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        //Cambiar el color del pincel a blanco para los pixeles encendidos
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-        //Recorrer la pantalla del CHIP-8 (64 columnas x 32 filas) y dibujar rectangulos
-        for (int y = 0; y < 32; ++y) {
-            for (int x = 0; x < 64; ++x) {
-                //Si el pixel esta encendido en nuestra RAM, lo pintamos de blanco en SDL
-                if (chip8.video[y * 64 + x] != 0) {
-                    SDL_Rect rect = {x * SCALE, y * SCALE, SCALE, SCALE};
-                    SDL_RenderFillRect(renderer, &rect);
+            if (e.type == SDL_KEYUP) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_1: chip8.keypad[0x1] = 0; break;
+                    case SDLK_2: chip8.keypad[0x2] = 0; break;
+                    case SDLK_3: chip8.keypad[0x3] = 0; break;
+                    case SDLK_4: chip8.keypad[0xC] = 0; break;
+                    case SDLK_q: chip8.keypad[0x4] = 0; break;
+                    case SDLK_w: chip8.keypad[0x5] = 0; break;
+                    case SDLK_e: chip8.keypad[0x6] = 0; break;
+                    case SDLK_r: chip8.keypad[0xD] = 0; break;
+                    case SDLK_a: chip8.keypad[0x7] = 0; break;
+                    case SDLK_s: chip8.keypad[0x8] = 0; break;
+                    case SDLK_d: chip8.keypad[0x9] = 0; break;
+                    case SDLK_f: chip8.keypad[0xE] = 0; break;
+                    case SDLK_z: chip8.keypad[0xA] = 0; break;
+                    case SDLK_x: chip8.keypad[0x0] = 0; break;
+                    case SDLK_c: chip8.keypad[0xB] = 0; break;
+                    case SDLK_v: chip8.keypad[0xF] = 0; break;
                 }
             }
         }
 
-        //Refrescar la ventana para mostrar los cambios
-        SDL_RenderPresent(renderer);
+        uint32_t currentTime = SDL_GetTicks();
 
-        //Pausa de 1ms para no saturar la CPU de tu ordenador
-        SDL_Delay(1);
+        // Actualizamos la pantalla y los temporizadores exactamente a 60 hercios (~16ms)
+        if (currentTime - lastTimerTick >= 16) {
+            
+            // 1. Ejecutamos 10 ciclos de CPU de golpe (~600 hercios totales)
+            for (int i = 0; i < 2; ++i) {
+                chip8.cycle();
+            }
+
+            // 2. Descontamos los temporizadores de sonido y retardo
+            chip8.updateTimers();
+
+            // 3. Lógica de dibujado
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+            SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+            for (int y = 0; y < 32; ++y) {
+                for (int x = 0; x < 64; ++x) {
+                    if (chip8.video[y * 64 + x] != 0) {
+                        SDL_Rect rect = {x * SCALE, y * SCALE, SCALE, SCALE};
+                        SDL_RenderFillRect(renderer, &rect);
+                    }
+                }
+            }
+
+            SDL_RenderPresent(renderer);
+            chip8.drawFlag = false;
+        }
+
+        // Dejamos que el kernel de Linux descanse el hilo sin importar si se pasa un poco
+        SDL_Delay(1); 
     }
 
-    //Limpiar la memoria y cerrar limpiamente
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

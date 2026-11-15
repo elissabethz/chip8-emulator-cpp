@@ -6,10 +6,12 @@ class Chip8 {
         Chip8();                                //Constructor
         bool loadROM(const char* filename);     //Nueva funcion para cargar juegos
         void cycle();
+        void updateTimers();
 
         //Elementos publicos que leera el main (la pantalla y el teclado)
         uint8_t keypad[16]{};                   //Teclado hexadecimal (0-F)
         uint32_t video[64 * 32]{};              //Pantalla monocromo de 64x32 pixeles
+        bool drawFlag{};
 
     private:
         //Componentes internos de la CPU
